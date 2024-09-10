@@ -1,0 +1,9 @@
+# Ignore specific files
+plan.txt
+try.py
+
+# Ignore venv folder
+venv/
+
+# Ignore .vscode folder
+.vscode/
