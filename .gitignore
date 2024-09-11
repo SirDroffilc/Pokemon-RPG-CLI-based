@@ -1,6 +1,7 @@
 # Ignore specific files
 plan.txt
-try.py
+tryAPI.py
+try_files.py
 
 # Ignore venv folder
 venv/
