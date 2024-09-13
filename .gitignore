@@ -2,9 +2,13 @@
 plan.txt
 tryAPI.py
 try_files.py
+try.ipynb
 
 # Ignore venv folder
 venv/
 
 # Ignore .vscode folder
 .vscode/
+
+# Ignore __pycache__ folder
+__pycache__/
