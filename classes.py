@@ -11,20 +11,35 @@ def main() -> None:
     Pokemon.retrieve()
     Pokemon.display_wild_pokemons()
 
-    pokemon = Pokemon.create_pokemon_from_name("charmander")
+    pokemon = Pokemon.create_pokemon_from_name("charizard")
     if not pokemon:
         print("FAILED")
     else:
         print(repr(pokemon))
+        time.sleep(3)
+
+    Trainer.retrieve()
+    trainer = Trainer.log_in()
+    trainer.catch_and_train_pokemon(pokemon)
+
+    trained_pokemon = TrainedPokemon.get_pokemon_by_id(trainer.pokemons[0])
+    print(trained_pokemon)
+
+
+
+    print(repr(trainer))
+
 
     return None
 
 
 class Trainer:
+    """Global Variables"""
     trainers: SortedSet["Trainer"] = SortedSet(key=lambda trainer: trainer.username)
     current_user: "Trainer" = None
     USERNAME_LIMIT = 15
     PASSWORD_LIMIT = 30
+    POKEBALLS_LIMIT = 6
     unique_id_counter = 0
 
 
@@ -35,7 +50,7 @@ class Trainer:
         self.pokemons = pokemons # list of TrainedPokemon.id
         self.pokeballs_count = pokeballs_count
 
-
+    """Getters and Setters"""
     @property
     def username(self):
         return self._username
@@ -70,13 +85,14 @@ class Trainer:
     def pokeballs_count(self, new_count):
         if new_count < 0:
             raise ValueError("You cannot have negative number of pokeballs.")
-        elif new_count > 6:
-            raise ValueError("You cannot carry more than 6 pokeballs")
+        elif new_count > Trainer.POKEBALLS_LIMIT:
+            raise ValueError(f"You cannot carry more than {Trainer.POKEBALLS_LIMIT} pokeballs")
         if new_count == 0:
             print("You have ran out of pokeballs! You have used the last one.")
         self._pokeballs_count = new_count
             
-    
+
+    """Class Methods"""
     @classmethod
     def search_trainers(cls, target_username) -> "Trainer":
         left = 0
@@ -221,8 +237,30 @@ class Trainer:
         input("Press enter to continue...")
 
     
-    def __str__(self):
+    """Instance Methods"""
+    def catch_and_train_pokemon(self, pokemon: "Pokemon") -> None:
+        """Catches a Pokemon object, converts it into a TrainedPokemon object, and adds the id to self.pokemons"""
+
+        if self.pokeballs_count <= 0:
+            print(f"No pokeballs left to catch this pokemon.")
+            return
+        
+        trained_pokemon = TrainedPokemon.create_trained_pokemon(pokemon, self._id)
+        self.pokemons.append(trained_pokemon._id)
+        self.pokeballs_count -= 1
+        
+
+    def __str__(self) -> str:
         return f"Trainer {self.username} ID: {self._id}"
+    
+    def __repr__(self) -> str:
+        return (
+            f"Trainer: {self.username}\n"
+            f"ID: {self._id}\n"
+            f"Password: {self.password}\n"
+            f"Pokemons: {self.pokemons}\n"
+            f"Pokeballs Count: {self.pokeballs_count}\n"
+        )
 
 
 class Pokemon:
@@ -294,7 +332,6 @@ class Pokemon:
             print(f"Base URL Response Error {response.status_code}")
             return None
         pokemon_data = response.json()
-
 
         pokemon = Pokemon()
         pokemon.name = pokemon_data["name"]
@@ -452,6 +489,54 @@ class Pokemon:
             f"HP: {self.hp}\n"
             f"Base Damage: {self.base_dmg}\n"
         )
+    
+
+class TrainedPokemon(Pokemon):
+    
+    """Global Variables"""
+    trained_pokemons: dict[int, "TrainedPokemon"] = {}
+    unique_id_counter = 0
+
+    def __init__(self, id=-1, trainer_id=-1, name="default", level=1, species="default", evolutions=[], types=[], weaknesses=[], moves=[], hp=Pokemon.HitPoints(), base_dmg=Pokemon.BaseDamage()) -> None:
+        super().__init__(name, level, species, evolutions, types, weaknesses, moves, hp, base_dmg)
+        self._id = id
+        self.trainer_id = trainer_id
+
+    
+    @classmethod 
+    def create_trained_pokemon(cls, pokemon: Pokemon, trainer_id: int) -> "TrainedPokemon":
+        """Converts a Pokemon object to a TrainedPokemon object"""
+
+        trained_pokemon = cls(
+            name = pokemon.name,
+            level = pokemon.level,
+            species = pokemon.species,
+            evolutions = pokemon.evolutions,
+            types = pokemon.types,
+            weaknesses = pokemon.weaknesses,
+            moves = pokemon.moves,
+            hp = pokemon.hp,
+            base_dmg = pokemon.base_dmg
+        )
+
+        trained_pokemon._id = cls.unique_id_counter + 1
+        trained_pokemon.trainer_id = trainer_id
+        cls.add_to_trained_pokemons(trained_pokemon)
+
+        return trained_pokemon
+
+
+    @classmethod
+    def add_to_trained_pokemons(cls, trained_pokemon: "TrainedPokemon") -> None:
+        if trained_pokemon._id > cls.unique_id_counter:
+            cls.unique_id_counter = trained_pokemon._id
+        cls.trained_pokemons[trained_pokemon._id] = trained_pokemon
+    
+
+    @classmethod
+    def get_pokemon_by_id(cls, id: int) -> "TrainedPokemon":
+        return cls.trained_pokemons[id]
+    
     
 
 if __name__ == "__main__":
