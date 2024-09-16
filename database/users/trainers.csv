@@ -1,5 +1,2 @@
 id,username,password,pokemons,pokeballs_count
-2,cliff,helloworld,[],6
-4,roy,helloworld,[],6
-3,tori,helloworld,[],6
-5,torion,helloworld,[],6
+1,ford,helloworld,"[1, 2, 3, 4, 5, 6]",0

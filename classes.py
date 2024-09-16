@@ -8,27 +8,25 @@ import time
 
 
 def main() -> None:
-    Pokemon.retrieve()
-    Pokemon.display_wild_pokemons()
-
-    pokemon = Pokemon.create_pokemon_from_name("charizard")
-    if not pokemon:
-        print("FAILED")
-    else:
-        print(repr(pokemon))
-        time.sleep(3)
-
     Trainer.retrieve()
-    trainer = Trainer.log_in()
-    trainer.catch_and_train_pokemon(pokemon)
+    Pokemon.retrieve()
+    TrainedPokemon.retrieve_trained_pokemons()
 
-    trained_pokemon = TrainedPokemon.get_pokemon_by_id(trainer.pokemons[0])
-    print(trained_pokemon)
+    wild_pokemon = Pokemon.generate_random_wild_pokemon("fire")
+    print(wild_pokemon)
+    time.sleep(2)
+    
+    # pokemon1 = Pokemon.create_pokemon_from_name("charizard")
+    # pokemon2 = Pokemon.create_pokemon_from_name("blastoise")
 
+    trainer = Trainer.sign_up()
+    # trainer.catch_and_train_pokemon(pokemon1)
+    # trainer.catch_and_train_pokemon(pokemon2)
+    
+    Battle.trainer_to_wild_battle(trainer, wild_pokemon)
 
-
-    print(repr(trainer))
-
+    TrainedPokemon.save_trained_pokemons()
+    Trainer.save()
 
     return None
 
@@ -232,23 +230,30 @@ class Trainer:
     @classmethod
     def display_trainers(cls) -> None:
         os.system("cls")
+        print("ALL TRAINERS")
         for i, trainer in enumerate(cls.trainers):
             print(f"{i+1}.) {trainer}")
         input("Press enter to continue...")
 
     
     """Instance Methods"""
-    def catch_and_train_pokemon(self, pokemon: "Pokemon") -> None:
+    def catch_and_train_pokemon(self, pokemon: "Pokemon") -> bool:
         """Catches a Pokemon object, converts it into a TrainedPokemon object, and adds the id to self.pokemons"""
 
         if self.pokeballs_count <= 0:
-            print(f"No pokeballs left to catch this pokemon.")
+            print(f"No Poke Balls left to catch this pokemon.")
             return
+        
+        if pokemon.hp.current > (0.4 * pokemon.hp.base):
+            print(f"{pokemon.name.capitalize()} got out of the Poke Ball. Catching failed!")
+            print(f"Try weakening {pokemon.name.capitalize()} first!\n")
+            return False
         
         trained_pokemon = TrainedPokemon.create_trained_pokemon(pokemon, self._id)
         self.pokemons.append(trained_pokemon._id)
         self.pokeballs_count -= 1
-        
+        return True
+    
 
     def __str__(self) -> str:
         return f"Trainer {self.username} ID: {self._id}"
@@ -275,7 +280,10 @@ class Pokemon:
             self.power = power
         
         def __str__(self) -> str:
-            return f"Move: {self.name} Type: {self.type} Power: {self.power}"
+            return f"\t\t- {self.name} | Type: {self.type}"
+        
+        def __repr__(self) -> str:
+            return f"- {self.name} | Type: {self.type} | Power: {self.power}"
         
     class HitPoints:
         def __init__(self, base=50, current=50) -> None:
@@ -307,24 +315,28 @@ class Pokemon:
     wild_grass_pokemons = []
     wild_water_pokemons = []
     poketypes = ["fire", "grass", "water"]
+    strength_to_weakness_map = {"fire": "water", "grass": "fire", "water": "grass"}
 
 
-    def __init__(self, name="default", level=1, species="default", evolutions=[], types=[], weaknesses=[], moves=[], hp=HitPoints(), base_dmg=BaseDamage())-> None:
+    def __init__(self, name="default", level=1, species={}, evolutions=[], types=[], weaknesses=[], moves=[], hp=None, base_dmg=None)-> None:
         self.name = name
         self.level = level
-        self.species = species
+        self.species = species # a dict with keys "name" and "url"
         self.evolutions = evolutions
         self.types = types
         self.weaknesses = weaknesses
-        self.moves = moves
-        self.hp = hp 
-        self.base_dmg = base_dmg
+        self.moves = moves # list of Move objects
+        self.hp = hp if hp is not None else Pokemon.HitPoints()
+        self.base_dmg = base_dmg if base_dmg is not None else Pokemon.BaseDamage()
+        self.is_awake = True
 
     
     @classmethod
     def create_pokemon_from_name(cls, pokemon_name: str) -> "Pokemon":
         """Creates a Pokemon Object from a string (pokemon_name) using PokeAPI"""
         """Always check if returned value is valid"""
+
+        print("\nLoading pokemon... ")
 
         url = f"{cls.base_url}/pokemon/{pokemon_name.lower()}"
         response = requests.get(url)
@@ -340,11 +352,45 @@ class Pokemon:
         pokemon.evolutions = pokemon.get_evolutions(pokemon.species)
         pokemon.types = [poketype["type"]["name"] for poketype in pokemon_data["types"]]
         pokemon.weaknesses = pokemon.get_weaknesses(pokemon.types)
-        pokemon.moves = pokemon.get_moves(pokemon_data["moves"]); """create a function"""
+        pokemon.moves = pokemon.get_moves(pokemon_data["moves"])
         pokemon.hp.update_base_hp(pokemon.level)
         pokemon.base_dmg.update_base_dmg(pokemon.level)
+
+        if not pokemon.evolutions or not pokemon.weaknesses or not pokemon.moves:
+            print(f"Create Pokemon Error. Evolutions/Weaknesses/Moves assignment failed.")
+            return None
+
         return pokemon
     
+    @classmethod
+    def generate_random_wild_pokemon(cls, poketype) -> "Pokemon":
+        """Returns a random, low-level, catchable, wild pokemon of type 'poketype'"""
+
+        if poketype not in cls.poketypes:
+            print("Generate Random Wild Pokemon failed. Type not supported.")
+            return None
+        
+        pokemon_name = ""
+        match poketype:
+            case "fire":
+                pokemon_name = random.choice(cls.wild_fire_pokemons)
+            case "grass":
+                pokemon_name = random.choice(cls.wild_grass_pokemons)
+            case "water":
+                pokemon_name = random.choice(cls.wild_water_pokemons)
+            case _:
+                return None
+            
+        pokemon = cls.create_pokemon_from_name(pokemon_name)
+        if not pokemon:
+            return None
+        
+        pokemon.level = random.randint(1, 3)
+        pokemon.hp.update_base_hp(pokemon.level)
+        pokemon.base_dmg.update_base_dmg(pokemon.level)
+
+        return pokemon
+
 
     @classmethod
     def retrieve(cls):
@@ -420,11 +466,11 @@ class Pokemon:
         return evolutions
     
     def get_weaknesses(self, types: list[str]) -> list[str]:
-        strength_to_weakness_map = {"fire": "water", "grass": "fire", "water": "grass"}
+        
         weaknesses = []
         for poketype in types:
-            if poketype in strength_to_weakness_map.keys():
-                weaknesses.append(strength_to_weakness_map[poketype])
+            if poketype in Pokemon.strength_to_weakness_map.keys():
+                weaknesses.append(Pokemon.strength_to_weakness_map[poketype])
         return weaknesses
 
     def get_moves(self, moves_data: list) -> list[Move]:
@@ -467,14 +513,20 @@ class Pokemon:
                 normal_moves_count += 1
         
         return pokemon_moves
-        
+    
+    def state(self) -> str:
+        return "Awake" if self.is_awake else "Fainted"
 
+    def update_is_awake(self) -> None:
+        self.is_awake = False if self.hp.current <= 0 else True
+    
     def __str__(self) -> str:
         return (
-            f"{self.name.upper()}\n"
-            f"Level {self.level}\n"
-            f"Types: {self.types}\n"
-            f"HP: {self.hp}\n"
+            f"  {self.name.upper()}\n"
+            f"\tLevel {self.level}\n"
+            f"\tTypes: {self.types}\n"
+            f"\tHP: {self.hp}\n"
+            f"\tMoves:\n" + '\n'.join([f"  {str(move)}" for move in self.moves]) + "\n" 
         )
     
     def __repr__(self) -> str:
@@ -503,6 +555,7 @@ class TrainedPokemon(Pokemon):
         self.trainer_id = trainer_id
 
     
+    """Class Methods"""
     @classmethod 
     def create_trained_pokemon(cls, pokemon: Pokemon, trainer_id: int) -> "TrainedPokemon":
         """Converts a Pokemon object to a TrainedPokemon object"""
@@ -537,7 +590,232 @@ class TrainedPokemon(Pokemon):
     def get_pokemon_by_id(cls, id: int) -> "TrainedPokemon":
         return cls.trained_pokemons[id]
     
-    
+
+    @classmethod
+    def save_trained_pokemons(cls) -> None:
+        with open("database/all_pokemons/trained_pokemons.csv", "w", newline="") as file:
+            fieldnames = ["id", "trainer_id", "name", "level", "species", "evolutions", "types", "weaknesses", "moves", "hp", "base_dmg"]
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+
+            for pokemon in cls.trained_pokemons.values():
+                writer.writerow({
+                    "id": pokemon._id,
+                    "trainer_id": pokemon.trainer_id,
+                    "name": pokemon.name,
+                    "level": pokemon.level,
+                    "species": json.dumps(pokemon.species),
+                    "evolutions": json.dumps(pokemon.evolutions), 
+                    "types": json.dumps(pokemon.types),
+                    "weaknesses": json.dumps(pokemon.weaknesses),
+                    "moves": json.dumps([move.__dict__ for move in pokemon.moves]),
+                    "hp": json.dumps(pokemon.hp.__dict__),
+                    "base_dmg": json.dumps(pokemon.base_dmg.__dict__)
+                })
+
+    @classmethod
+    def retrieve_trained_pokemons(cls):
+        with open("database/all_pokemons/trained_pokemons.csv", "r", newline="") as file:
+            reader = csv.DictReader(file)
+            for row in reader: # each row is a TrainedPokemon object
+                moves = [Pokemon.Move(**move) for move in json.loads(row["moves"])]
+                hp = Pokemon.HitPoints(**json.loads(row["hp"]))
+                base_dmg = Pokemon.BaseDamage(**json.loads(row["base_dmg"]))
+
+                trained_pokemon = cls(
+                    id = int(row["id"]),
+                    trainer_id = int(row["trainer_id"]),
+                    name = row["name"],
+                    level = int(row["level"]),
+                    species = json.loads(row["species"]),
+                    evolutions = json.loads(row["evolutions"]),
+                    types = json.loads(row["types"]),
+                    weaknesses = json.loads(row["weaknesses"]),
+                    moves = moves,
+                    hp = hp,
+                    base_dmg = base_dmg
+                )
+                cls.add_to_trained_pokemons(trained_pokemon)
+
+    @classmethod
+    def display_trained_pokemons(cls):
+        os.system("cls")
+        print("ALL TRAINED POKEMONS")
+        for _id, pokemon in cls.trained_pokemons.items():
+            print(f"#{_id}")
+            print(repr(pokemon))
+
+
+    """Instance Methods"""
+
+    def __repr__(self) -> str:
+        return (
+            f"Name: {self.name.upper()}\n"
+            f"ID: {self._id}\n"
+            f"Trainer ID: {self.trainer_id}\n"
+            f"Level: {self.level}\n"
+        )
+
+
+class Battle:
+
+    @classmethod
+    def trainer_to_wild_battle(cls, trainer : Trainer, wild_pokemon: Pokemon) -> None:
+        victory = False
+        cls.reset_all_hp(trainer.pokemons)
+        while(True):
+            if cls.trainer_pokemons_all_fainted(trainer.pokemons):
+                victory = False
+                break
+            if not wild_pokemon.is_awake:
+                victory = True
+                break
+
+            current_trainer_pokemon = cls.choose_pokemon_from_team(trainer)
+            catch_status= cls.initiate_pokemon_battle(current_trainer_pokemon, wild_pokemon, is_wild_battle=True)
+            if catch_status == "catch_success":
+                return
+        
+        message = "You won!" if victory else "All of your pokemons fainted. You lost!"
+        print(message)
+
+
+    @classmethod
+    def initiate_pokemon_battle(cls, user_pokemon: Pokemon, enemy_pokemon: Pokemon, is_wild_battle=False) -> None | str:
+        def choose_user_move(pokemon_moves: list[Pokemon.Move], is_wild_battle=False) -> Pokemon.Move | str:
+            while True:
+                choice = input("Move Name: ").lower()
+                if is_wild_battle and choice == "catch-pokemon":
+                    return choice
+                for move in pokemon_moves:
+                    if choice == move.name:
+                        return move
+                print("Invalid move")
+
+        def inflict_damage(attacker: Pokemon, move: Pokemon.Move, opponent: Pokemon) -> None:
+            """Reduces the opponent_pokemon.hp.current based on the move.type, move.power, opponent_pokemon.types, and opponent_pokemon.weaknesses. Damage is rounded"""
+
+            damage = (attacker.base_dmg.dmg / 100) * move.power
+
+            effect = "normal"
+            effect_message = {
+                "normal": "The attack was effective.",
+                "super": "The attack was super effective",
+                "ineffective": "The attack was super ineffective",
+                "same": "The attack was ineffective because of similar types"
+        
+            }
+            
+            if move.type in opponent.types:
+                damage *= 0.5
+                effect = "same"
+            elif move.type in opponent.weaknesses: 
+                damage *= 2
+                effect = "super"
+            elif move.type == "normal":
+                damage *= 1
+                effect = "normal"
+            elif Pokemon.strength_to_weakness_map[move.type] in opponent.types: 
+                damage *= 0.25
+                effect = "ineffective"
+            else:
+                damage *= 1
+                effect = "normal"
+
+            damage = round(damage)
+
+            opponent.hp.current -= damage
+            opponent.update_is_awake()
+
+            print(f"\n{attacker.name.capitalize()} used {move.name} and dealt {damage}HP damage to {opponent.name.capitalize()}")
+            print(effect_message[effect])
+            return 
+
+        def prompt_catch() -> bool:
+            """Returns True if trainer wants to catch, else False"""
+            while True:
+                choice = input(f"Use a Poke Ball to catch {enemy_pokemon.name.capitalize()} (y/n): ").lower()
+                if choice in ("y", "yes"):
+                    print("")
+                    return True
+                elif choice in ("n", "no"):
+                    print("")
+                    return False
+                else:
+                    print("Invalid Input: Enter 'yes', 'no', 'y', or 'n' only.")
+                    continue
+
+        while user_pokemon.is_awake and enemy_pokemon.is_awake:
+            os.system("cls")
+            print("WILD POKEMON")
+            print(enemy_pokemon)
+            print("--------------------------------------------------")
+            print("YOUR POKEMON")
+            print(user_pokemon)
+            
+            if is_wild_battle:
+                catch = prompt_catch()
+                if catch:
+                    catch_result = Trainer.current_user.catch_and_train_pokemon(enemy_pokemon)
+                    if catch_result:
+                        print(f"You have a new Pokemon! You have successfully catched {enemy_pokemon.name.capitalize()}!")
+                        return "catch_success"
+
+            user_move = choose_user_move(user_pokemon.moves)
+            enemy_move = random.choice(enemy_pokemon.moves)
+
+            os.system("cls")
+            print(f"{Trainer.current_user.username}: {user_pokemon.name.capitalize()}, use {user_move.name}!")
+            time.sleep(1.5)
+            inflict_damage(user_pokemon, user_move, enemy_pokemon)
+            inflict_damage(enemy_pokemon, enemy_move, user_pokemon)
+            input("\n\nPress Enter to continue...")
+
+
+        if not user_pokemon.is_awake:
+            print(f"\n{user_pokemon.name} fainted.")
+        if not enemy_pokemon.is_awake:
+            print(f"\n{enemy_pokemon.name} fainted.")
+        
+        return 
+            
+
+    @classmethod
+    def reset_all_hp(cls, trainer_pokemon_ids: list[int]) -> None:
+        for pokemon_id in trainer_pokemon_ids:
+            pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
+            pokemon.hp.current = pokemon.hp.base
+        
+
+    @classmethod
+    def choose_pokemon_from_team(cls, trainer: Trainer) -> TrainedPokemon:
+        print("Choose Your Pokemon:")
+        for i, pokemon_id in enumerate(trainer.pokemons):
+            pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
+            print(f"  {i+1}. {pokemon.name} | Level: {pokemon.level} | Type: {pokemon.types} | State: {pokemon.state()}")
+
+        while(True):
+            try:
+                choice = int(input("Choose Pokemon Number: "))
+            except ValueError:
+                print("Invalid Input. Input a valid integer.")
+                continue
+            if 1 <= choice <= len(trainer.pokemons):
+                break
+            else:
+                print(f"Invalid Input. Available Pokemon Numbers: 1 to {len(trainer.pokemons)}")
+
+        chosen_pokemon_id = trainer.pokemons[choice-1]
+        return TrainedPokemon.get_pokemon_by_id(chosen_pokemon_id)
+            
+    @classmethod
+    def trainer_pokemons_all_fainted(cls, trainer_pokemon_ids: list[int]) -> bool:
+        for pokemon_id in trainer_pokemon_ids:
+            pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
+            if pokemon.is_awake:
+                return False
+        else:
+            return True
 
 if __name__ == "__main__":
     main()
