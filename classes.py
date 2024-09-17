@@ -12,21 +12,33 @@ def main() -> None:
     Pokemon.retrieve()
     TrainedPokemon.retrieve_trained_pokemons()
 
-    wild_pokemon = Pokemon.generate_random_wild_pokemon("fire")
-    print(wild_pokemon)
+    pokemon = TrainedPokemon.get_pokemon_by_id(3)
+
+    print("Before: \n")
+    print(pokemon)
+
     time.sleep(2)
+    pokemon.level = 4
+    pokemon.evolve()
+    print(pokemon)
+
+    pokemon.level = 6
+    pokemon.evolve()
+    print(pokemon)
+
+
     
+
+
+    # wild_pokemon = Pokemon.generate_random_wild_pokemon("fire")
     # pokemon1 = Pokemon.create_pokemon_from_name("charizard")
-    # pokemon2 = Pokemon.create_pokemon_from_name("blastoise")
 
-    trainer = Trainer.sign_up()
     # trainer.catch_and_train_pokemon(pokemon1)
-    # trainer.catch_and_train_pokemon(pokemon2)
     
-    Battle.trainer_to_wild_battle(trainer, wild_pokemon)
+    # Battle.trainer_to_wild_battle(trainer, wild_pokemon)
 
-    TrainedPokemon.save_trained_pokemons()
-    Trainer.save()
+    # TrainedPokemon.save_trained_pokemons()
+    # Trainer.save()
 
     return None
 
@@ -85,8 +97,6 @@ class Trainer:
             raise ValueError("You cannot have negative number of pokeballs.")
         elif new_count > Trainer.POKEBALLS_LIMIT:
             raise ValueError(f"You cannot carry more than {Trainer.POKEBALLS_LIMIT} pokeballs")
-        if new_count == 0:
-            print("You have ran out of pokeballs! You have used the last one.")
         self._pokeballs_count = new_count
             
 
@@ -280,7 +290,7 @@ class Pokemon:
             self.power = power
         
         def __str__(self) -> str:
-            return f"\t\t- {self.name} | Type: {self.type}"
+            return f"\t- {self.name} | Type: {self.type}"
         
         def __repr__(self) -> str:
             return f"- {self.name} | Type: {self.type} | Power: {self.power}"
@@ -290,8 +300,8 @@ class Pokemon:
             self.base = base
             self.current = current
 
-        def update_base_hp(self, level: int):
-            base_hp = level * 50
+        def update_base_hp(self, level: int, evolution_chain_position: int):
+            base_hp = 50 * (level + evolution_chain_position)
             self.base = base_hp
             self.current = base_hp
 
@@ -302,9 +312,11 @@ class Pokemon:
         def __init__(self, dmg=10) -> None:
             self.dmg = dmg
         
-        def update_base_dmg(self, level: int):
-            base_dmg = level * 10
+        def update_base_dmg(self, level: int, evolution_chain_position: int):
+            base_dmg = 10  * (level + evolution_chain_position)
             self.dmg = base_dmg
+
+        
         
         def __str__(self) -> str:
             return f"{self.dmg}"
@@ -336,7 +348,7 @@ class Pokemon:
         """Creates a Pokemon Object from a string (pokemon_name) using PokeAPI"""
         """Always check if returned value is valid"""
 
-        print("\nLoading pokemon... ")
+        print("\nLoading Pokemon... ")
 
         url = f"{cls.base_url}/pokemon/{pokemon_name.lower()}"
         response = requests.get(url)
@@ -353,8 +365,8 @@ class Pokemon:
         pokemon.types = [poketype["type"]["name"] for poketype in pokemon_data["types"]]
         pokemon.weaknesses = pokemon.get_weaknesses(pokemon.types)
         pokemon.moves = pokemon.get_moves(pokemon_data["moves"])
-        pokemon.hp.update_base_hp(pokemon.level)
-        pokemon.base_dmg.update_base_dmg(pokemon.level)
+        pokemon.hp.update_base_hp(pokemon.level, pokemon.get_evolution_chain_position())
+        pokemon.base_dmg.update_base_dmg(pokemon.level, pokemon.get_evolution_chain_position())
 
         if not pokemon.evolutions or not pokemon.weaknesses or not pokemon.moves:
             print(f"Create Pokemon Error. Evolutions/Weaknesses/Moves assignment failed.")
@@ -386,8 +398,8 @@ class Pokemon:
             return None
         
         pokemon.level = random.randint(1, 3)
-        pokemon.hp.update_base_hp(pokemon.level)
-        pokemon.base_dmg.update_base_dmg(pokemon.level)
+        pokemon.hp.update_base_hp(pokemon.level, pokemon.get_evolution_chain_position())
+        pokemon.base_dmg.update_base_dmg(pokemon.level, pokemon.get_evolution_chain_position())
 
         return pokemon
 
@@ -520,12 +532,19 @@ class Pokemon:
     def update_is_awake(self) -> None:
         self.is_awake = False if self.hp.current <= 0 else True
     
+    def get_evolution_chain_position(self):
+        for i, evolution in enumerate(self.evolutions):
+            if evolution == self.name:
+                return i
+        
+
     def __str__(self) -> str:
         return (
             f"  {self.name.upper()}\n"
             f"\tLevel {self.level}\n"
             f"\tTypes: {self.types}\n"
             f"\tHP: {self.hp}\n"
+            f"\tBase Damage: {self.base_dmg.dmg}\n"
             f"\tMoves:\n" + '\n'.join([f"  {str(move)}" for move in self.moves]) + "\n" 
         )
     
@@ -537,7 +556,7 @@ class Pokemon:
             f"Evolutions: {self.evolutions}\n"
             f"Types: {self.types}\n"
             f"Weaknesses: {self.weaknesses}\n"
-            f"Moves:\n" + '\n'.join([f"\t{str(move)}" for move in self.moves]) + "\n"  
+            f"Moves:\n" + '\n'.join([f"\t{repr(move)}" for move in self.moves]) + "\n"  
             f"HP: {self.hp}\n"
             f"Base Damage: {self.base_dmg}\n"
         )
@@ -648,12 +667,50 @@ class TrainedPokemon(Pokemon):
 
     """Instance Methods"""
 
+    def evolve(self):
+        chain_position = self.get_evolution_chain_position()
+
+        if chain_position == len(self.evolutions) - 1: # if last evolution
+            print("Cannot evolve further")
+            return
+        
+        next_chain_position = chain_position + 1
+        
+        print(f"Next Evolution: {self.evolutions[next_chain_position].capitalize()}")
+        required_level = 1 + (3 * next_chain_position)
+        print(f"Required Level: {required_level}")
+
+        if self.level < required_level:
+            print("Current level too low. Train Pokemon first. It must be at least the required level.\n")
+            return
+
+        next_evolution_pokemon= Pokemon.create_pokemon_from_name(self.evolutions[chain_position+1])
+
+        self.name = next_evolution_pokemon.name
+        self.species = next_evolution_pokemon.species
+        self.types = next_evolution_pokemon.types
+        self.weaknesses = next_evolution_pokemon.weaknesses
+        self.moves = next_evolution_pokemon.moves
+
+        # Bonus HP and Damage for evolving
+        self.hp.update_base_hp(self.level, next_chain_position)
+        self.base_dmg.update_base_dmg(self.level, next_chain_position)
+        
+        
+
     def __repr__(self) -> str:
         return (
             f"Name: {self.name.upper()}\n"
             f"ID: {self._id}\n"
             f"Trainer ID: {self.trainer_id}\n"
             f"Level: {self.level}\n"
+            f"Species: {self.species['name']}\n"
+            f"Evolutions: {self.evolutions}\n"
+            f"Types: {self.types}\n"
+            f"Weaknesses: {self.weaknesses}\n"
+            f"Moves:\n" + '\n'.join([f"{repr(move)}" for move in self.moves]) + "\n"  
+            f"HP: {self.hp}\n"
+            f"Base Damage: {self.base_dmg}\n"
         )
 
 
