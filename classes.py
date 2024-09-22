@@ -14,18 +14,13 @@ def main() -> None:
 
     Trainer.log_in()
     trainer = Trainer.current_user
-    # starter_pokemon = Pokemon.create_pokemon_from_name("squirtle")
-    # starter_pokemon.level = 2
-    # starter_pokemon.hp.update_base_hp(2, starter_pokemon.get_evolution_chain_position())
-    # starter_pokemon.base_dmg.update_base_dmg(2, starter_pokemon.get_evolution_chain_position())
-    # starter_pokemon.hp.current = round(0.3 * starter_pokemon.hp.base)
-    # trainer.catch_and_train_pokemon(starter_pokemon)
 
-    trained_pokemon = TrainedPokemon.get_pokemon_by_id(2)
+    if not trainer.pokemons:
+        trainer.choose_starter_pokemon()
+
+    trained_pokemon = TrainedPokemon.get_pokemon_by_id(1)
     trained_pokemon.evolve()
-    trained_pokemon.train()
 
-    
     TrainedPokemon.save_trained_pokemons()
     Trainer.save()
 
@@ -239,6 +234,7 @@ class Trainer:
     def catch_and_train_pokemon(self, pokemon: "Pokemon") -> bool:
         """Catches a Pokemon object, converts it into a TrainedPokemon object, and adds the id to self.pokemons"""
 
+        os.system("cls")
         if self.pokeballs_count <= 0:
             print(f"No Poke Balls left to catch this pokemon.")
             return
@@ -251,6 +247,7 @@ class Trainer:
         trained_pokemon = TrainedPokemon.create_trained_pokemon(pokemon, self._id)
         self.pokemons.append(trained_pokemon._id)
         self.pokeballs_count -= 1
+        print(f"You have successfully catched {pokemon.name.capitalize()}!\n")
         return True
     
     def evolve_pokemon(self, pokemon: "TrainedPokemon") -> None:
@@ -259,7 +256,28 @@ class Trainer:
         pokemon.evolve()
         ...
 
-    
+    def choose_starter_pokemon(self) -> None:
+        starter_pokemons = ("charmander", "bulbasaur", "squirtle")
+        os.system("cls")
+        print("Starter Pokemons:")
+        print("  1. Charmander | Fire Type Pokemon")
+        print("  2. Bulbasaur | Grass Type Pokemon")
+        print("  3. Squirtle | Water Type Pokemon\n")
+        while True:
+            choice = input("Choose your first Pokemon: ").lower().strip()
+            if choice in starter_pokemons:
+                break
+            print("Please choose from the three pokemons.\n")
+
+        pokemon: Pokemon = Pokemon.create_pokemon_from_name(choice)
+        pokemon.level = 2
+        pokemon.hp.update_base_hp(pokemon.level, pokemon.get_evolution_chain_position())
+        pokemon.base_dmg.update_base_dmg(pokemon.level, pokemon.get_evolution_chain_position())
+        pokemon.hp.current = round(0.3 * pokemon.hp.base)
+        self.catch_and_train_pokemon(pokemon)
+        print("Good luck on your journey as a Pokemon Trainer!")
+        input("Press Enter to continue...")
+
     def __str__(self) -> str:
         return f"Trainer {self.username} ID: {self._id}"
     
