@@ -12,33 +12,20 @@ def main() -> None:
     Pokemon.retrieve()
     TrainedPokemon.retrieve_trained_pokemons()
 
-    pokemon = TrainedPokemon.get_pokemon_by_id(3)
+    Trainer.log_in()
+    trainer = Trainer.current_user
+    # starter_pokemon = Pokemon.create_pokemon_from_name("charmander")
+    # starter_pokemon.hp.current = 0.3 * starter_pokemon.hp.base
+    # trainer.catch_and_train_pokemon(starter_pokemon)
 
-    print("Before: \n")
-    print(pokemon)
+    trained_pokemon = TrainedPokemon.get_pokemon_by_id(1)
+    trained_pokemon.evolve()
 
-    time.sleep(2)
-    pokemon.level = 4
-    pokemon.evolve()
-    print(pokemon)
-
-    pokemon.level = 6
-    pokemon.evolve()
-    print(pokemon)
-
+    trained_pokemon.train()
 
     
-
-
-    # wild_pokemon = Pokemon.generate_random_wild_pokemon("fire")
-    # pokemon1 = Pokemon.create_pokemon_from_name("charizard")
-
-    # trainer.catch_and_train_pokemon(pokemon1)
-    
-    # Battle.trainer_to_wild_battle(trainer, wild_pokemon)
-
-    # TrainedPokemon.save_trained_pokemons()
-    # Trainer.save()
+    TrainedPokemon.save_trained_pokemons()
+    Trainer.save()
 
     return None
 
@@ -264,7 +251,13 @@ class Trainer:
         self.pokeballs_count -= 1
         return True
     
+    def evolve_pokemon(self, pokemon: "TrainedPokemon") -> None:
+        """TO DO"""
 
+        pokemon.evolve()
+        ...
+
+    
     def __str__(self) -> str:
         return f"Trainer {self.username} ID: {self._id}"
     
@@ -667,12 +660,12 @@ class TrainedPokemon(Pokemon):
 
     """Instance Methods"""
 
-    def evolve(self):
+    def evolve(self) -> bool:
         chain_position = self.get_evolution_chain_position()
 
         if chain_position == len(self.evolutions) - 1: # if last evolution
             print("Cannot evolve further")
-            return
+            return False
         
         next_chain_position = chain_position + 1
         
@@ -682,8 +675,12 @@ class TrainedPokemon(Pokemon):
 
         if self.level < required_level:
             print("Current level too low. Train Pokemon first. It must be at least the required level.\n")
-            return
-
+            return False
+        
+        prev_name = self.name.capitalize()
+        prev_hp = self.hp.base
+        prev_base_dmg = self.base_dmg.dmg
+        
         next_evolution_pokemon= Pokemon.create_pokemon_from_name(self.evolutions[chain_position+1])
 
         self.name = next_evolution_pokemon.name
@@ -695,8 +692,43 @@ class TrainedPokemon(Pokemon):
         # Bonus HP and Damage for evolving
         self.hp.update_base_hp(self.level, next_chain_position)
         self.base_dmg.update_base_dmg(self.level, next_chain_position)
+
+        print(f"{prev_name} evolved to {self.name.capitalize()}.")
+        print(f"HP: {prev_hp} -> {self.hp.base} | Base Damage: {prev_base_dmg} -> {self.base_dmg.dmg}\n")
+
+        return True
         
+    
+    def train(self) -> None:
+        """Trains a TrainedPokemon object. Generates a random enemy pokemon. TrainedPokemon will level up if it achieves total victory over the random enemy pokemon"""
+        poketype = random.choice(Pokemon.poketypes)
+        random_pokemon = Pokemon.generate_random_wild_pokemon(poketype)
+
+        total_victory = Battle.initiate_pokemon_battle(self, random_pokemon)
+
+        if total_victory:
+            self.level_up()
+            
+        else:
+            print(f"{self.name.capitalize()} lost. Try again!")
+
+
+    def level_up(self):
+        """Levels up a TrainedPokemon object"""
+        os.system("cls")
+        if self.level == 10:
+            print(f"{self.name.capitalize()} reached the maximum level.")
+            return
         
+        prev_hp = self.hp.base
+        prev_base_dmg = self.base_dmg.dmg
+        
+        self.level += 1
+        self.hp.update_base_hp(self.level, self.get_evolution_chain_position())
+        self.base_dmg.update_base_dmg(self.level, self.get_evolution_chain_position())
+        print(f"Leveled up! {self.name.capitalize()} reached level {self.level}.")
+        print(f"HP: {prev_hp} -> {self.hp.base} | Base Damage: {prev_base_dmg} -> {self.base_dmg.dmg}\n")
+
 
     def __repr__(self) -> str:
         return (
@@ -738,12 +770,12 @@ class Battle:
 
 
     @classmethod
-    def initiate_pokemon_battle(cls, user_pokemon: Pokemon, enemy_pokemon: Pokemon, is_wild_battle=False) -> None | str:
-        def choose_user_move(pokemon_moves: list[Pokemon.Move], is_wild_battle=False) -> Pokemon.Move | str:
+    def initiate_pokemon_battle(cls, user_pokemon: Pokemon, enemy_pokemon: Pokemon, is_wild_battle=False) -> bool | str:
+        """Returns True if user_pokemon won; returns False if lost; returns a string 'catch_success' if caught"""
+        
+        def choose_user_move(pokemon_moves: list[Pokemon.Move]) -> Pokemon.Move | str:
             while True:
                 choice = input("Move Name: ").lower()
-                if is_wild_battle and choice == "catch-pokemon":
-                    return choice
                 for move in pokemon_moves:
                     if choice == move.name:
                         return move
@@ -828,13 +860,16 @@ class Battle:
             inflict_damage(enemy_pokemon, enemy_move, user_pokemon)
             input("\n\nPress Enter to continue...")
 
-
+        total_victory = True
         if not user_pokemon.is_awake:
             print(f"\n{user_pokemon.name} fainted.")
+            total_victory = False
         if not enemy_pokemon.is_awake:
             print(f"\n{enemy_pokemon.name} fainted.")
+
+        input("\n\nPress Enter to continue...")
         
-        return 
+        return total_victory
             
 
     @classmethod
