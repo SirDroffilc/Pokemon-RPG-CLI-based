@@ -14,13 +14,15 @@ def main() -> None:
 
     Trainer.log_in()
     trainer = Trainer.current_user
-    # starter_pokemon = Pokemon.create_pokemon_from_name("charmander")
-    # starter_pokemon.hp.current = 0.3 * starter_pokemon.hp.base
+    # starter_pokemon = Pokemon.create_pokemon_from_name("squirtle")
+    # starter_pokemon.level = 2
+    # starter_pokemon.hp.update_base_hp(2, starter_pokemon.get_evolution_chain_position())
+    # starter_pokemon.base_dmg.update_base_dmg(2, starter_pokemon.get_evolution_chain_position())
+    # starter_pokemon.hp.current = round(0.3 * starter_pokemon.hp.base)
     # trainer.catch_and_train_pokemon(starter_pokemon)
 
-    trained_pokemon = TrainedPokemon.get_pokemon_by_id(1)
+    trained_pokemon = TrainedPokemon.get_pokemon_by_id(2)
     trained_pokemon.evolve()
-
     trained_pokemon.train()
 
     
@@ -341,7 +343,7 @@ class Pokemon:
         """Creates a Pokemon Object from a string (pokemon_name) using PokeAPI"""
         """Always check if returned value is valid"""
 
-        print("\nLoading Pokemon... ")
+        print("Loading Pokemon... ")
 
         url = f"{cls.base_url}/pokemon/{pokemon_name.lower()}"
         response = requests.get(url)
@@ -697,24 +699,33 @@ class TrainedPokemon(Pokemon):
         print(f"HP: {prev_hp} -> {self.hp.base} | Base Damage: {prev_base_dmg} -> {self.base_dmg.dmg}\n")
 
         return True
-        
-    
+
+
     def train(self) -> None:
         """Trains a TrainedPokemon object. Generates a random enemy pokemon. TrainedPokemon will level up if it achieves total victory over the random enemy pokemon"""
         poketype = random.choice(Pokemon.poketypes)
         random_pokemon = Pokemon.generate_random_wild_pokemon(poketype)
+        
+        close_gap_level = self.level + random.randint(-2, 2)
+        random_pokemon.level = min(max(close_gap_level, 1), 10)
 
+        random_pokemon.hp.update_base_hp(random_pokemon.level, random_pokemon.get_evolution_chain_position())
+        random_pokemon.base_dmg.update_base_dmg(random_pokemon.level, random_pokemon.get_evolution_chain_position())
+
+        Battle.reset_hp(self)
+        Battle.reset_hp(random_pokemon)
         total_victory = Battle.initiate_pokemon_battle(self, random_pokemon)
 
         if total_victory:
-            self.level_up()
+            level_gap = random_pokemon.level - self.level
+            self.level_up(level_gap)
             
         else:
             print(f"{self.name.capitalize()} lost. Try again!")
 
 
-    def level_up(self):
-        """Levels up a TrainedPokemon object"""
+    def level_up(self, level_gap=0):
+        """Levels up a TrainedPokemon object based on level_gap between the pokemon and its enemy"""
         os.system("cls")
         if self.level == 10:
             print(f"{self.name.capitalize()} reached the maximum level.")
@@ -722,8 +733,12 @@ class TrainedPokemon(Pokemon):
         
         prev_hp = self.hp.base
         prev_base_dmg = self.base_dmg.dmg
+
+        if level_gap > 1:
+            self.level += 2 
+        else:
+            self.level += 1
         
-        self.level += 1
         self.hp.update_base_hp(self.level, self.get_evolution_chain_position())
         self.base_dmg.update_base_dmg(self.level, self.get_evolution_chain_position())
         print(f"Leveled up! {self.name.capitalize()} reached level {self.level}.")
@@ -862,10 +877,10 @@ class Battle:
 
         total_victory = True
         if not user_pokemon.is_awake:
-            print(f"\n{user_pokemon.name} fainted.")
+            print(f"\n{user_pokemon.name.capitalize()} fainted.")
             total_victory = False
         if not enemy_pokemon.is_awake:
-            print(f"\n{enemy_pokemon.name} fainted.")
+            print(f"\n{enemy_pokemon.name.capitalize()} fainted.")
 
         input("\n\nPress Enter to continue...")
         
@@ -878,6 +893,9 @@ class Battle:
             pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
             pokemon.hp.current = pokemon.hp.base
         
+    @classmethod
+    def reset_hp(cls, pokemon: Pokemon) -> None:
+        pokemon.hp.current = pokemon.hp.base
 
     @classmethod
     def choose_pokemon_from_team(cls, trainer: Trainer) -> TrainedPokemon:
