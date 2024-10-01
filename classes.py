@@ -12,14 +12,19 @@ def main() -> None:
     Pokemon.retrieve()
     TrainedPokemon.retrieve_trained_pokemons()
 
-    Trainer.log_in()
+    Trainer.sign_up()
     trainer = Trainer.current_user
 
     if not trainer.pokemons:
         trainer.choose_starter_pokemon()
 
-    trained_pokemon = TrainedPokemon.get_pokemon_by_id(1)
-    trained_pokemon.evolve()
+    Trainer.log_out()
+
+    Trainer.sign_up()
+    trainer = Trainer.current_user
+
+    if not trainer.pokemons:
+        trainer.choose_starter_pokemon()
 
     TrainedPokemon.save_trained_pokemons()
     Trainer.save()
@@ -37,11 +42,11 @@ class Trainer:
     unique_id_counter = 0
 
 
-    def __init__(self, id:int=-1, username:str="", password:str="", pokemons:list[int]=[], pokeballs_count:int=6) -> None:
+    def __init__(self, id:int=-1, username:str="", password:str="", pokemons:list[int]=None, pokeballs_count:int=6) -> None:
         self._id = id
         self.username = username
         self.password = password
-        self.pokemons = pokemons # list of TrainedPokemon.id
+        self.pokemons = pokemons if pokemons is not None else [] # list of TrainedPokemon.id
         self.pokeballs_count = pokeballs_count
 
     """Getters and Setters"""
@@ -181,6 +186,8 @@ class Trainer:
     @classmethod
     def log_out(cls) -> None:
         cls.current_user = None
+        cls.save()
+        TrainedPokemon.save_trained_pokemons()
 
     @classmethod
     def save(cls) -> None:
