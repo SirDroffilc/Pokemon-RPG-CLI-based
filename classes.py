@@ -11,21 +11,7 @@ def main() -> None:
     Trainer.retrieve()
     Pokemon.retrieve()
     TrainedPokemon.retrieve_trained_pokemons()
-
-    Trainer.sign_up()
-    trainer = Trainer.current_user
-
-    if not trainer.pokemons:
-        trainer.choose_starter_pokemon()
-
-    Trainer.log_out()
-
-    Trainer.sign_up()
-    trainer = Trainer.current_user
-
-    if not trainer.pokemons:
-        trainer.choose_starter_pokemon()
-
+    
     TrainedPokemon.save_trained_pokemons()
     Trainer.save()
 
@@ -236,7 +222,103 @@ class Trainer:
             print(f"{i+1}.) {trainer}")
         input("Press enter to continue...")
 
-    
+    @classmethod
+    def generate_gym_trainers(cls) -> None:
+        """Generates the Gym Trainers for Story Mode"""
+        def generate_Misty() -> Trainer:
+            staryu = Pokemon.create_pokemon_from_name("staryu")
+            starmie = Pokemon.create_pokemon_from_name("starmie")
+
+            staryu_chain_pos = staryu.get_evolution_chain_position()
+            starmie_chain_pos = starmie.get_evolution_chain_position()
+
+            staryu.level = 3
+            staryu.hp.update_base_hp(3, staryu_chain_pos)
+            staryu.base_dmg.update_base_dmg(3, staryu_chain_pos)
+            staryu.hp.current = round(0.3 * staryu.hp.base)
+
+            starmie.level = 5
+            starmie.hp.update_base_hp(5, starmie_chain_pos)
+            starmie.base_dmg.update_base_dmg(5, starmie_chain_pos)
+            starmie.hp.current = round(0.3 * starmie.hp.base)
+
+            trainer_Misty = Trainer(cls.unique_id_counter+1, "Misty", "MistyPassword")
+            trainer_Misty.catch_and_train_pokemon(staryu)
+            trainer_Misty.catch_and_train_pokemon(starmie)
+
+            Trainer.add_to_trainers(trainer_Misty)
+            return trainer_Misty
+        
+        def generate_Blaine() -> Trainer:
+            magcargo = Pokemon.create_pokemon_from_name("magcargo")
+            magmar = Pokemon.create_pokemon_from_name("magmar")
+            rapidash = Pokemon.create_pokemon_from_name("rapidash")
+
+            magcargo_chain_pos = magcargo.get_evolution_chain_position()
+            magmar_chain_pos = magmar.get_evolution_chain_position()
+            rapidash_chain_pos = rapidash.get_evolution_chain_position()
+
+            magcargo.level = 5
+            magcargo.hp.update_base_hp(5, magcargo_chain_pos)
+            magcargo.base_dmg.update_base_dmg(5, magcargo_chain_pos)
+            magcargo.hp.current = round(0.3 * magcargo.hp.base)
+
+            magmar.level = 7
+            magmar.hp.update_base_hp(7, magmar_chain_pos)
+            magmar.base_dmg.update_base_dmg(7, magmar_chain_pos)
+            magmar.hp.current = round(0.3 * magmar.hp.base)
+
+            rapidash.level = 10
+            rapidash.hp.update_base_hp(10, rapidash_chain_pos)
+            rapidash.base_dmg.update_base_dmg(10, rapidash_chain_pos)
+            rapidash.hp.current = round(0.3 * rapidash.hp.base)
+
+            trainer_Blaine = Trainer(cls.unique_id_counter+1, "Blaine", "BlainePassword")
+            trainer_Blaine.catch_and_train_pokemon(magcargo)
+            trainer_Blaine.catch_and_train_pokemon(magmar)
+            trainer_Blaine.catch_and_train_pokemon(rapidash)
+
+            Trainer.add_to_trainers(trainer_Blaine)
+            return trainer_Blaine
+            
+        def generate_Blue() -> Trainer:
+            exeggutor = Pokemon.create_pokemon_from_name("exeggutor")
+            gyarados = Pokemon.create_pokemon_from_name("gyarados")
+            arcanine = Pokemon.create_pokemon_from_name("arcanine")
+
+            exeggutor_chain_pos = exeggutor.get_evolution_chain_position()
+            gyarados_chain_pos = gyarados.get_evolution_chain_position()
+            arcanine_chain_pos = arcanine.get_evolution_chain_position()
+
+            exeggutor.level = 10
+            exeggutor.hp.update_base_hp(10, exeggutor_chain_pos)
+            exeggutor.base_dmg.update_base_dmg(10, exeggutor_chain_pos)
+            exeggutor.hp.current = round(0.3 * exeggutor.hp.base)
+
+            gyarados.level = 10
+            gyarados.hp.update_base_hp(10, gyarados_chain_pos)
+            gyarados.base_dmg.update_base_dmg(10, gyarados_chain_pos)
+            gyarados.hp.current = round(0.3 * gyarados.hp.base)
+
+            arcanine.level = 10
+            arcanine.hp.update_base_hp(10, arcanine_chain_pos)
+            arcanine.base_dmg.update_base_dmg(10, arcanine_chain_pos)
+            arcanine.hp.current = round(0.3 * arcanine.hp.base)
+
+            trainer_Blue = Trainer(cls.unique_id_counter+1, "Blue", "BluePassword")
+            trainer_Blue.catch_and_train_pokemon(exeggutor)
+            trainer_Blue.catch_and_train_pokemon(gyarados)
+            trainer_Blue.catch_and_train_pokemon(arcanine)
+
+            Trainer.add_to_trainers(trainer_Blue)
+            return trainer_Blue
+
+        generate_Misty()
+        generate_Blaine()
+        generate_Blue()
+        return
+
+
     """Instance Methods"""
     def catch_and_train_pokemon(self, pokemon: "Pokemon") -> bool:
         """Catches a Pokemon object, converts it into a TrainedPokemon object, and adds the id to self.pokemons"""
