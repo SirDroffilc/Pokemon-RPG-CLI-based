@@ -11,6 +11,13 @@ def main() -> None:
     Trainer.retrieve()
     Pokemon.retrieve()
     TrainedPokemon.retrieve_trained_pokemons()
+
+    trainer = Trainer.log_in()
+    enemy_trainer = Trainer.search_trainers("Blue")
+    if not enemy_trainer:
+        print("Invalid enemy trainer")
+        return 
+    Battle.trainer_to_trainer_battle(trainer, enemy_trainer)
     
     TrainedPokemon.save_trained_pokemons()
     Trainer.save()
@@ -819,8 +826,8 @@ class TrainedPokemon(Pokemon):
         random_pokemon.hp.update_base_hp(random_pokemon.level, random_pokemon.get_evolution_chain_position())
         random_pokemon.base_dmg.update_base_dmg(random_pokemon.level, random_pokemon.get_evolution_chain_position())
 
-        Battle.reset_hp(self)
-        Battle.reset_hp(random_pokemon)
+        Battle.reset_hp_and_awake_state(self)
+        Battle.reset_hp_and_awake_state(random_pokemon)
         total_victory = Battle.initiate_pokemon_battle(self, random_pokemon)
 
         if total_victory:
@@ -873,7 +880,7 @@ class Battle:
     @classmethod
     def trainer_to_wild_battle(cls, trainer : Trainer, wild_pokemon: Pokemon) -> None:
         victory = False
-        cls.reset_all_hp(trainer.pokemons)
+        cls.reset_all_hp_and_awake_state(trainer.pokemons)
         while(True):
             if cls.trainer_pokemons_all_fainted(trainer.pokemons):
                 victory = False
@@ -888,6 +895,27 @@ class Battle:
                 return
         
         message = "You won!" if victory else "All of your pokemons fainted. You lost!"
+        print(message)
+
+    @classmethod
+    def trainer_to_trainer_battle(cls, user_trainer: Trainer, enemy_trainer: Trainer) -> None:
+        total_victory = False
+        cls.reset_all_hp_and_awake_state(user_trainer.pokemons)
+        cls.reset_all_hp_and_awake_state(enemy_trainer.pokemons)
+
+        while True:
+            if cls.trainer_pokemons_all_fainted(user_trainer.pokemons):
+                total_victory = False
+                break
+            if cls.trainer_pokemons_all_fainted(enemy_trainer.pokemons):
+                total_victory = True
+                break
+
+            current_user_pokemon = cls.choose_pokemon_from_team(user_trainer)
+            enemy_pokemon = cls.random_choose_pokemon_from_team(enemy_trainer)
+            cls.initiate_pokemon_battle(current_user_pokemon, enemy_pokemon)
+
+        message = "You won!" if total_victory else "All of your pokemons fainted. You lost!"
         print(message)
 
 
@@ -995,17 +1023,20 @@ class Battle:
             
 
     @classmethod
-    def reset_all_hp(cls, trainer_pokemon_ids: list[int]) -> None:
+    def reset_all_hp_and_awake_state(cls, trainer_pokemon_ids: list[int]) -> None:
         for pokemon_id in trainer_pokemon_ids:
             pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
             pokemon.hp.current = pokemon.hp.base
+            pokemon.is_awake = True
         
     @classmethod
-    def reset_hp(cls, pokemon: Pokemon) -> None:
+    def reset_hp_and_awake_state(cls, pokemon: Pokemon) -> None:
         pokemon.hp.current = pokemon.hp.base
-
+        pokemon.is_awake = True
+    
     @classmethod
     def choose_pokemon_from_team(cls, trainer: Trainer) -> TrainedPokemon:
+        os.system("cls")
         print("Choose Your Pokemon:")
         for i, pokemon_id in enumerate(trainer.pokemons):
             pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
@@ -1024,7 +1055,16 @@ class Battle:
 
         chosen_pokemon_id = trainer.pokemons[choice-1]
         return TrainedPokemon.get_pokemon_by_id(chosen_pokemon_id)
-            
+    
+    @classmethod
+    def random_choose_pokemon_from_team(cls, trainer: Trainer) -> TrainedPokemon:
+        for pokemon_id in trainer.pokemons:
+            pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
+            if pokemon.is_awake:
+                break
+
+        return pokemon
+
     @classmethod
     def trainer_pokemons_all_fainted(cls, trainer_pokemon_ids: list[int]) -> bool:
         for pokemon_id in trainer_pokemon_ids:
