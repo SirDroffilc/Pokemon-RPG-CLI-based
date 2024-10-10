@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import pyfiglet
 import random
 import requests
 from sortedcontainers import SortedSet
@@ -8,20 +9,7 @@ import time
 
 
 def main() -> None:
-    Trainer.retrieve()
-    Pokemon.retrieve()
-    TrainedPokemon.retrieve_trained_pokemons()
-
-    trainer = Trainer.log_in()
-    enemy_trainer = Trainer.search_trainers("Blue")
-    if not enemy_trainer:
-        print("Invalid enemy trainer")
-        return 
-    Battle.trainer_to_trainer_battle(trainer, enemy_trainer)
     
-    TrainedPokemon.save_trained_pokemons()
-    Trainer.save()
-
     return None
 
 
@@ -127,7 +115,8 @@ class Trainer:
         password = None
         while not username or not password:
             os.system("cls")
-            print("SIGN UP")
+            sign_up_text = pyfiglet.figlet_format("SIGN UP", font="ogre")
+            print(sign_up_text)
             username = validate_username(input("Username: "))
             if not username:
                 continue
@@ -160,7 +149,8 @@ class Trainer:
         
         while(True):
             os.system("cls")
-            print("LOG IN")
+            log_in_text = pyfiglet.figlet_format("Log In", font="doom")
+            print(log_in_text)
 
             username = input("Username: ")
             found_trainer = check_username(username)
@@ -213,6 +203,7 @@ class Trainer:
                     pokeballs_count=int(row["pokeballs_count"]))
                 
                 cls.add_to_trainers(trainer)
+
 
     @classmethod
     def add_to_trainers(cls, trainer: "Trainer") -> None:
@@ -330,7 +321,6 @@ class Trainer:
     def catch_and_train_pokemon(self, pokemon: "Pokemon") -> bool:
         """Catches a Pokemon object, converts it into a TrainedPokemon object, and adds the id to self.pokemons"""
 
-        os.system("cls")
         if self.pokeballs_count <= 0:
             print(f"No Poke Balls left to catch this pokemon.")
             return
@@ -338,6 +328,7 @@ class Trainer:
         if pokemon.hp.current > (0.4 * pokemon.hp.base):
             print(f"{pokemon.name.capitalize()} got out of the Poke Ball. Catching failed!")
             print(f"Try weakening {pokemon.name.capitalize()} first!\n")
+            input("Press Enter to continue\n")
             return False
         
         trained_pokemon = TrainedPokemon.create_trained_pokemon(pokemon, self._id)
@@ -345,12 +336,6 @@ class Trainer:
         self.pokeballs_count -= 1
         print(f"You have successfully catched {pokemon.name.capitalize()}!\n")
         return True
-    
-    def evolve_pokemon(self, pokemon: "TrainedPokemon") -> None:
-        """TO DO"""
-
-        pokemon.evolve()
-        ...
 
     def choose_starter_pokemon(self) -> None:
         starter_pokemons = ("charmander", "bulbasaur", "squirtle")
@@ -374,6 +359,65 @@ class Trainer:
         print("Good luck on your journey as a Pokemon Trainer!")
         input("Press Enter to continue...")
 
+    def explore_maps(self) -> None:
+        """TO DO"""
+        explore_text = pyfiglet.figlet_format("Catch a Wild Pokemon", "ogre")
+        def choose_map() -> int:
+            while True:  
+                os.system("cls")
+                print(explore_text)
+                print("CHOOSE A MAP")
+                print("1. Volcano Island")
+                print("2. All Blue Ocean")
+                print("3. Tropical Forest")
+                choice = input("Choose a Map (1-3): ")
+                if not choice.isdigit() or int(choice) < 1 or int(choice) > 3:
+                    print("Please enter a valid integer (1-3).")
+                    input("Press Enter to continue...")
+                else:
+                    break
+            return int(choice) - 1 # index in Pokemon.explorable_maps class variable
+
+        map_int = choose_map()
+        chosen_map = Pokemon.explorable_maps[map_int]
+        match chosen_map:
+            case "Volcano Island":
+                poketype = "fire"
+            case "All Blue Ocean":
+                poketype = "water"
+            case "Tropical Forest":
+                poketype = "grass"
+            case _:
+                poketype = "fire"
+        
+        while True:
+            os.system("cls")
+            print(explore_text)
+            pokemon_name: str = Pokemon.get_random_wild_pokemon_name(poketype)
+            pokemon_level = random.randint(1, 3)
+            print(f"A wild {pokemon_name.capitalize()} (Lvl. {pokemon_level}) has appeared!")
+            while True:
+                choice = input("Try to catch? (y/n): ").lower()
+                if choice in ["yes", "no", "y", "n"]:
+                    break
+                else:
+                    print(f"Invalid choice. Please enter 'yes', 'y', 'no', or 'n' only")
+            
+            if choice in ["yes", "y"]:
+                break
+            else:
+                continue
+
+        wild_pokemon: Pokemon = Pokemon.create_pokemon_from_name(pokemon_name)
+        wild_pokemon.level = pokemon_level
+        chain_pos = wild_pokemon.get_evolution_chain_position()
+        wild_pokemon.hp.update_base_hp(pokemon_level, chain_pos)
+        wild_pokemon.base_dmg.update_base_dmg(pokemon_level, chain_pos)
+
+        Battle.trainer_to_wild_battle(self, wild_pokemon)
+        return
+
+
     def __str__(self) -> str:
         return f"Trainer {self.username} ID: {self._id}"
     
@@ -385,7 +429,6 @@ class Trainer:
             f"Pokemons: {self.pokemons}\n"
             f"Pokeballs Count: {self.pokeballs_count}\n"
         )
-
 
 class Pokemon:
     """PokeAPI Base URL"""
@@ -437,6 +480,7 @@ class Pokemon:
     wild_water_pokemons = []
     poketypes = ["fire", "grass", "water"]
     strength_to_weakness_map = {"fire": "water", "grass": "fire", "water": "grass"}
+    explorable_maps = ["Volcano Island", "All Blue Ocean", "Tropical Forest"]
 
 
     def __init__(self, name="default", level=1, species={}, evolutions=[], types=[], weaknesses=[], moves=[], hp=None, base_dmg=None)-> None:
@@ -491,16 +535,7 @@ class Pokemon:
             print("Generate Random Wild Pokemon failed. Type not supported.")
             return None
         
-        pokemon_name = ""
-        match poketype:
-            case "fire":
-                pokemon_name = random.choice(cls.wild_fire_pokemons)
-            case "grass":
-                pokemon_name = random.choice(cls.wild_grass_pokemons)
-            case "water":
-                pokemon_name = random.choice(cls.wild_water_pokemons)
-            case _:
-                return None
+        pokemon_name = cls.get_random_wild_pokemon_name(poketype)
             
         pokemon = cls.create_pokemon_from_name(pokemon_name)
         if not pokemon:
@@ -512,7 +547,19 @@ class Pokemon:
 
         return pokemon
 
-
+    @classmethod
+    def get_random_wild_pokemon_name(cls, poketype) -> "Pokemon":
+        pokemon_name = ""
+        match poketype:
+            case "fire":
+                pokemon_name = random.choice(cls.wild_fire_pokemons)
+            case "grass":
+                pokemon_name = random.choice(cls.wild_grass_pokemons)
+            case "water":
+                pokemon_name = random.choice(cls.wild_water_pokemons)
+            case _:
+                return None
+        return pokemon_name
     @classmethod
     def retrieve(cls):
         """Retrieves Wild Pokemons from database into the class variables"""
@@ -670,7 +717,6 @@ class Pokemon:
             f"Base Damage: {self.base_dmg}\n"
         )
     
-
 class TrainedPokemon(Pokemon):
     
     """Global Variables"""
@@ -874,8 +920,9 @@ class TrainedPokemon(Pokemon):
             f"Base Damage: {self.base_dmg}\n"
         )
 
-
 class Battle:
+
+    
 
     @classmethod
     def trainer_to_wild_battle(cls, trainer : Trainer, wild_pokemon: Pokemon) -> None:
@@ -1022,6 +1069,7 @@ class Battle:
         return total_victory
             
 
+
     @classmethod
     def reset_all_hp_and_awake_state(cls, trainer_pokemon_ids: list[int]) -> None:
         for pokemon_id in trainer_pokemon_ids:
@@ -1073,6 +1121,9 @@ class Battle:
                 return False
         else:
             return True
+
+
+
 
 if __name__ == "__main__":
     main()
