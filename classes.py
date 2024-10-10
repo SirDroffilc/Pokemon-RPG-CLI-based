@@ -87,6 +87,14 @@ class Trainer:
         
         return None
     
+    @classmethod
+    def search_trainers_by_id(cls, target_id) -> "Trainer":
+        for trainer in cls.trainers:
+            if trainer._id == target_id:
+                return trainer
+        else:
+            return None
+        
             
     @classmethod
     def sign_up(cls) -> "Trainer":
@@ -334,7 +342,6 @@ class Trainer:
         trained_pokemon = TrainedPokemon.create_trained_pokemon(pokemon, self._id)
         self.pokemons.append(trained_pokemon._id)
         self.pokeballs_count -= 1
-        print(f"You have successfully catched {pokemon.name.capitalize()}!\n")
         return True
 
     def choose_starter_pokemon(self) -> None:
@@ -415,6 +422,39 @@ class Trainer:
         wild_pokemon.base_dmg.update_base_dmg(pokemon_level, chain_pos)
 
         Battle.trainer_to_wild_battle(self, wild_pokemon)
+        return
+
+    def gym_battle(self) -> None:
+        os.system("cls")
+        gym_text = pyfiglet.figlet_format("Gym Battle", "ogre")
+        print(gym_text)
+        print("1. Misty of the Cerulean Gym")
+        print("2. Blaine of the Cinnabar Gym")
+        print("3. Blue, Champion of Kanto Region")
+
+        while True:
+            try:
+                choice = int(input("Choose Pokemon Number: "))
+            except ValueError:
+                print("Invalid Input. Input a valid integer.")
+                continue
+            if 1 <= choice <= 3:
+                break
+            else:
+                print(f"Invalid Input. Available Gym Leaders Numbers: 1 to 3")
+            
+        match choice:
+            case 1:
+                gym_trainer_name = "Misty"
+            case 2:
+                gym_trainer_name = "Blaine"
+            case 3:
+                gym_trainer_name = "Blue"
+            case _:
+                gym_trainer_name = "Misty"
+        
+        gym_trainer = Trainer.search_trainers(gym_trainer_name)
+        Battle.trainer_to_trainer_battle(self, gym_trainer)
         return
 
 
@@ -921,8 +961,8 @@ class TrainedPokemon(Pokemon):
         )
 
 class Battle:
-
-    
+    victory_message = pyfiglet.figlet_format("YOU WON THE BATTLE!", font="small")
+    defeat_message = pyfiglet.figlet_format("YOU LOST THE BATTLE!", font="small")
 
     @classmethod
     def trainer_to_wild_battle(cls, trainer : Trainer, wild_pokemon: Pokemon) -> None:
@@ -941,8 +981,8 @@ class Battle:
             if catch_status == "catch_success":
                 return
         
-        message = "You won!" if victory else "All of your pokemons fainted. You lost!"
-        print(message)
+        os.system("cls")
+        print(cls.victory_message) if victory else print(cls.defeat_message)
 
     @classmethod
     def trainer_to_trainer_battle(cls, user_trainer: Trainer, enemy_trainer: Trainer) -> None:
@@ -962,8 +1002,8 @@ class Battle:
             enemy_pokemon = cls.random_choose_pokemon_from_team(enemy_trainer)
             cls.initiate_pokemon_battle(current_user_pokemon, enemy_pokemon)
 
-        message = "You won!" if total_victory else "All of your pokemons fainted. You lost!"
-        print(message)
+        os.system("cls")
+        print(cls.victory_message) if total_victory else print(cls.defeat_message)
 
 
     @classmethod
@@ -1031,12 +1071,20 @@ class Battle:
                     print("Invalid Input: Enter 'yes', 'no', 'y', or 'n' only.")
                     continue
 
+        if is_wild_battle:
+            trainer = None
+            enemy_label = pyfiglet.figlet_format("WILD POKEMON", font="small")
+        if not is_wild_battle:
+            trainer_id = enemy_pokemon.trainer_id
+            trainer = Trainer.search_trainers_by_id(trainer_id)
+            enemy_label = pyfiglet.figlet_format(trainer.username.upper(), font="small")
+
         while user_pokemon.is_awake and enemy_pokemon.is_awake:
             os.system("cls")
-            print("WILD POKEMON")
+            print(enemy_label)
             print(enemy_pokemon)
-            print("--------------------------------------------------")
-            print("YOUR POKEMON")
+            print("-------------------------------------------------------------------")
+            print(pyfiglet.figlet_format("YOUR POKEMON", font="small"))
             print(user_pokemon)
             
             if is_wild_battle:
@@ -1044,14 +1092,19 @@ class Battle:
                 if catch:
                     catch_result = Trainer.current_user.catch_and_train_pokemon(enemy_pokemon)
                     if catch_result:
-                        print(f"You have a new Pokemon! You have successfully catched {enemy_pokemon.name.capitalize()}!")
+                        os.system("cls")
+                        print(f"You have a new Pokemon! You have successfully catched ")
+                        pokemon_name_text = pyfiglet.figlet_format(f"{enemy_pokemon.name.capitalize()}!", font="small")
+                        print(pokemon_name_text)
                         return "catch_success"
 
             user_move = choose_user_move(user_pokemon.moves)
             enemy_move = random.choice(enemy_pokemon.moves)
 
             os.system("cls")
-            print(f"{Trainer.current_user.username}: {user_pokemon.name.capitalize()}, use {user_move.name}!")
+            print(f"{Trainer.current_user.username}:")
+            shout_move_text = pyfiglet.figlet_format(f"{user_pokemon.name.capitalize()}, use {user_move.name}!", "small")
+            print(shout_move_text)
             time.sleep(1.5)
             inflict_damage(user_pokemon, user_move, enemy_pokemon)
             inflict_damage(enemy_pokemon, enemy_move, user_pokemon)
@@ -1085,11 +1138,13 @@ class Battle:
     @classmethod
     def choose_pokemon_from_team(cls, trainer: Trainer) -> TrainedPokemon:
         os.system("cls")
-        print("Choose Your Pokemon:")
+        choose_text = pyfiglet.figlet_format("Choose Your Pokemon", font="small")
+        print(choose_text)
         for i, pokemon_id in enumerate(trainer.pokemons):
             pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
             print(f"  {i+1}. {pokemon.name} | Level: {pokemon.level} | Type: {pokemon.types} | State: {pokemon.state()}")
 
+        print("")
         while(True):
             try:
                 choice = int(input("Choose Pokemon Number: "))
@@ -1121,8 +1176,6 @@ class Battle:
                 return False
         else:
             return True
-
-
 
 
 if __name__ == "__main__":

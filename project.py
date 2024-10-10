@@ -67,7 +67,7 @@ def start_game() -> None:
             case 1:
                 trainer.explore_maps()
             case 2:
-                print("Gym Battle")
+                trainer.gym_battle()
             case 3:
                 print("Your Pokemons")
             case 4:
