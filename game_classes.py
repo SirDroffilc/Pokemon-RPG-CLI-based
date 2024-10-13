@@ -195,19 +195,24 @@ class Trainer:
 
     @classmethod
     def retrieve(cls) -> None:
-        with open("database/users/trainers.csv", "r", newline='') as file:
-            reader = csv.DictReader(file)
+        try:
+            with open("database/users/trainers.csv", "r", newline='') as file:
+                reader = csv.DictReader(file)
 
-            for row in reader:
-                row["pokemons"] = json.loads(row["pokemons"])
-                trainer = Trainer(
-                    id=int(row["id"]), 
-                    username=row["username"], 
-                    password=row["password"], 
-                    pokemons=row["pokemons"], 
-                    pokeballs_count=int(row["pokeballs_count"]))
-                
-                cls.add_to_trainers(trainer)
+                for row in reader:
+                    row["pokemons"] = json.loads(row["pokemons"])
+                    trainer = Trainer(
+                        id=int(row["id"]), 
+                        username=row["username"], 
+                        password=row["password"], 
+                        pokemons=row["pokemons"], 
+                        pokeballs_count=int(row["pokeballs_count"]))
+                    
+                    cls.add_to_trainers(trainer)
+        except FileNotFoundError:
+            print("database/users/trainers.csv does not exist. Retrieve Trainers Failed.\n")
+
+        
 
 
     @classmethod
@@ -710,18 +715,21 @@ class Pokemon:
         """Each wild pokemon class variables will contain names only and NOT Pokemon objects"""
 
         for poketype in cls.poketypes:
-            with open(f"./database/all_pokemons/wild_pokemons/wild_{poketype}_pokemons.txt") as file:
-                for row in file: # each row is a name of a wild pokemon
-                    match poketype:
-                        case "fire":
-                            cls.wild_fire_pokemons.append(row.strip())
-                        case "grass":
-                            cls.wild_grass_pokemons.append(row.strip())
-                        case "water":
-                            cls.wild_water_pokemons.append(row.strip())
-                        case _:
-                            print("Type not supported")
-                            break
+            try:
+                with open(f"./database/all_pokemons/wild_pokemons/wild_{poketype}_pokemons.txt") as file:
+                    for row in file: # each row is a name of a wild pokemon
+                        match poketype:
+                            case "fire":
+                                cls.wild_fire_pokemons.append(row.strip())
+                            case "grass":
+                                cls.wild_grass_pokemons.append(row.strip())
+                            case "water":
+                                cls.wild_water_pokemons.append(row.strip())
+                            case _:
+                                print("Type not supported")
+                                break
+            except FileNotFoundError:
+                print(f"database/all_pokemons/wild_pokemons/wild_{poketype}_pokemons.txt does not exist. Retrieve Wild {poketype} Pokemons Failed.\n")
 
 
     @classmethod
@@ -933,27 +941,30 @@ class TrainedPokemon(Pokemon):
 
     @classmethod
     def retrieve_trained_pokemons(cls):
-        with open("database/all_pokemons/trained_pokemons.csv", "r", newline="") as file:
-            reader = csv.DictReader(file)
-            for row in reader: # each row is a TrainedPokemon object
-                moves = [Pokemon.Move(**move) for move in json.loads(row["moves"])]
-                hp = Pokemon.HitPoints(**json.loads(row["hp"]))
-                base_dmg = Pokemon.BaseDamage(**json.loads(row["base_dmg"]))
+        try:
+            with open("database/all_pokemons/trained_pokemons.csv", "r", newline="") as file:
+                reader = csv.DictReader(file)
+                for row in reader: # each row is a TrainedPokemon object
+                    moves = [Pokemon.Move(**move) for move in json.loads(row["moves"])]
+                    hp = Pokemon.HitPoints(**json.loads(row["hp"]))
+                    base_dmg = Pokemon.BaseDamage(**json.loads(row["base_dmg"]))
 
-                trained_pokemon = cls(
-                    id = int(row["id"]),
-                    trainer_id = int(row["trainer_id"]),
-                    name = row["name"],
-                    level = int(row["level"]),
-                    species = json.loads(row["species"]),
-                    evolutions = json.loads(row["evolutions"]),
-                    types = json.loads(row["types"]),
-                    weaknesses = json.loads(row["weaknesses"]),
-                    moves = moves,
-                    hp = hp,
-                    base_dmg = base_dmg
-                )
-                cls.add_to_trained_pokemons(trained_pokemon)
+                    trained_pokemon = cls(
+                        id = int(row["id"]),
+                        trainer_id = int(row["trainer_id"]),
+                        name = row["name"],
+                        level = int(row["level"]),
+                        species = json.loads(row["species"]),
+                        evolutions = json.loads(row["evolutions"]),
+                        types = json.loads(row["types"]),
+                        weaknesses = json.loads(row["weaknesses"]),
+                        moves = moves,
+                        hp = hp,
+                        base_dmg = base_dmg
+                    )
+                    cls.add_to_trained_pokemons(trained_pokemon)
+        except FileNotFoundError:
+            print("database/all_pokemons/trained_pokemons.csv does not exist. Retrieve Trained Pokemons Failed.\n")
 
     @classmethod
     def display_trained_pokemons(cls):

@@ -1,8 +1,7 @@
-from classes import Trainer, Pokemon, TrainedPokemon, Battle
+from .game_classes import Trainer, Pokemon, TrainedPokemon, Battle
 import pyfiglet
 import os
 import requests_cache
-
 
 def main() -> None:
     Trainer.retrieve()
@@ -58,12 +57,12 @@ def auth_menu() -> int:
         print("2. Sign Up")
         print("3. Exit")
         choice = input("Choose an option (1-3): ")
-        if not choice.isdigit() or int(choice) < 1 or int(choice) > 3:
-            print("Please enter a valid integer (1-3).")
+        is_valid = check_int_input(choice, 1, 3)
+        if is_valid:
+            break
+        else:
             input("Press Enter to continue...")
             continue
-        else:
-            break
 
     return int(choice)
 
@@ -72,7 +71,7 @@ def start_game() -> None:
 
     while(True):
         Battle.reset_all_hp_and_awake_state(trainer.pokemons)
-        choice = game_menu()
+        choice = game_menu(trainer)
         match choice:
             case 1:
                 trainer.explore_maps()
@@ -86,12 +85,12 @@ def start_game() -> None:
         input("Press Enter to continue...")
     return
 
-def game_menu() -> int:
-    if not Trainer.current_user:
+def game_menu(current_user: Trainer) -> int:
+    if not current_user:
         print("Error: User not logged in.")
         return -1
         
-    game_menu_text = pyfiglet.figlet_format(f"Welcome, {Trainer.current_user.username}", font="rectangles")
+    game_menu_text = pyfiglet.figlet_format(f"Welcome, {current_user.username}", font="rectangles")
     while True:
         os.system("cls")
         print(game_menu_text)
@@ -100,14 +99,24 @@ def game_menu() -> int:
         print("3. Your Pokemons")
         print("4. Log Out")
         choice = input("Choose an option (1-4): ")
-        if not choice.isdigit() or int(choice) < 1 or int(choice) > 4:
-            print("Please enter a valid integer (1-4).")
+        is_valid = check_int_input(choice, 1, 4)
+        if is_valid:
+            break
+        else:
             input("Press Enter to continue...")
             continue
-        else:
-            break
 
     return int(choice)
+
+
+def check_int_input(choice, min: int, max: int) -> bool:
+    if not choice.isdigit() or int(choice) < min or int(choice) > max:
+        print(f"Please enter a valid integer ({min}-{max}).\n")
+        return False
+    else:
+        return True
+        
+
 
 if __name__ == "__main__":
     main()
