@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 from .project import check_int_input, game_menu, auth_menu
 from .game_classes import Trainer
