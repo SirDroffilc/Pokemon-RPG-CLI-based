@@ -12,3 +12,4 @@ venv/
 
 # Ignore __pycache__ folder
 __pycache__/
+.pytest_cache/
