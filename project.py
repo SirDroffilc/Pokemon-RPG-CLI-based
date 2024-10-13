@@ -1,4 +1,4 @@
-from .game_classes import Trainer, Pokemon, TrainedPokemon, Battle
+from game_classes import Trainer, Pokemon, TrainedPokemon, Battle
 import pyfiglet
 import os
 import requests_cache
@@ -116,7 +116,6 @@ def check_int_input(choice, min: int, max: int) -> bool:
     else:
         return True
         
-
 
 if __name__ == "__main__":
     main()
