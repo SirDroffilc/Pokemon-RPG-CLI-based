@@ -1,11 +1,19 @@
 from classes import Trainer, Pokemon, TrainedPokemon, Battle
 import pyfiglet
 import os
+import requests_cache
+
 
 def main() -> None:
     Trainer.retrieve()
     Pokemon.retrieve()
     TrainedPokemon.retrieve_trained_pokemons()
+    requests_cache.install_cache("pokemon_cache")
+
+    if not Trainer.are_gym_trainers_generated():
+        print("GENERATING GYM TRAINERS. PLEASE WAIT.")
+        Trainer.generate_gym_trainers()
+        input("Press Enter to continue...")
 
     os.system("cls")
 
@@ -61,7 +69,9 @@ def auth_menu() -> int:
 
 def start_game() -> None:
     trainer: Trainer = Trainer.current_user
+
     while(True):
+        Battle.reset_all_hp_and_awake_state(trainer.pokemons)
         choice = game_menu()
         match choice:
             case 1:

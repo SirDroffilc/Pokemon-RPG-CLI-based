@@ -9,7 +9,7 @@ import time
 
 
 def main() -> None:
-    
+
     return None
 
 
@@ -21,7 +21,6 @@ class Trainer:
     PASSWORD_LIMIT = 30
     POKEBALLS_LIMIT = 6
     unique_id_counter = 0
-
 
     def __init__(self, id:int=-1, username:str="", password:str="", pokemons:list[int]=None, pokeballs_count:int=6) -> None:
         self._id = id
@@ -169,7 +168,6 @@ class Trainer:
                 print(f"Logged In Successfully\n")
                 break
         
-        Battle.reset_all_hp_and_awake_state(found_trainer.pokemons)
         cls.current_user = found_trainer
         return cls.current_user
 
@@ -231,6 +229,10 @@ class Trainer:
     def generate_gym_trainers(cls) -> None:
         """Generates the Gym Trainers for Story Mode"""
         def generate_Misty() -> Trainer:
+
+            if cls.search_trainers("Misty"):
+                return None
+            
             staryu = Pokemon.create_pokemon_from_name("staryu")
             starmie = Pokemon.create_pokemon_from_name("starmie")
 
@@ -255,6 +257,10 @@ class Trainer:
             return trainer_Misty
         
         def generate_Blaine() -> Trainer:
+
+            if cls.search_trainers("Blaine"):
+                return None
+            
             magcargo = Pokemon.create_pokemon_from_name("magcargo")
             magmar = Pokemon.create_pokemon_from_name("magmar")
             rapidash = Pokemon.create_pokemon_from_name("rapidash")
@@ -287,6 +293,10 @@ class Trainer:
             return trainer_Blaine
             
         def generate_Blue() -> Trainer:
+
+            if cls.search_trainers("Blue"):
+                return None
+            
             exeggutor = Pokemon.create_pokemon_from_name("exeggutor")
             gyarados = Pokemon.create_pokemon_from_name("gyarados")
             arcanine = Pokemon.create_pokemon_from_name("arcanine")
@@ -322,6 +332,17 @@ class Trainer:
         generate_Blaine()
         generate_Blue()
         return
+    
+    @classmethod
+    def are_gym_trainers_generated(cls) -> bool:
+        gym_trainers = ["Misty", "Blaine", "Blue"]
+
+        for trainer in gym_trainers:
+            is_generated = cls.search_trainers(trainer)
+            if not is_generated:
+                return False
+        else:
+            return True
 
 
     """Instance Methods"""
@@ -486,19 +507,21 @@ class Trainer:
 
         for i, pokemon_id in enumerate(self.pokemons):
             pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
-            print(f"  {i+1}. {pokemon.name} | Level: {pokemon.level} | Type: {pokemon.types}")
+            print(f"  {i+1}. {pokemon.name} | Level: {pokemon.level} | Type: {pokemon.types} | HP: {pokemon.hp.base} | Base Damage: {pokemon.base_dmg.dmg}")
 
         print("")
         while True:
                 choice = input("Do you want to evolve or train your pokemons? (y/n): ").lower()
                 if choice in ("y", "yes"):
+                    print("")
                     break
                 elif choice in ("n", "no"):
+                    print("")
                     return
                 else:
                     print("Invalid Input: Enter 'yes', 'no', 'y', or 'n' only.\n")
                     continue
-
+                
         while True:
             try:
                 choice = int(input("Choose a Pokemon Number: "))
