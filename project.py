@@ -69,7 +69,7 @@ def start_game() -> None:
             case 2:
                 trainer.gym_battle()
             case 3:
-                print("Your Pokemons")
+                trainer.your_pokemons()
             case 4:
                 Trainer.log_out()
                 break

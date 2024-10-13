@@ -2,3 +2,4 @@ id,username,password,pokemons,pokeballs_count
 2,Blaine,BlainePassword,"[3, 4, 5]",1
 3,Blue,BluePassword,"[6, 7, 8]",3
 1,Misty,MistyPassword,"[1, 2]",3
+4,ford,fordpass,[9],5

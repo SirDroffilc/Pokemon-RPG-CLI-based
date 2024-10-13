@@ -146,7 +146,6 @@ class Trainer:
                 return None
             return found_trainer
 
-
         def check_password(trainer: Trainer, password: str) -> bool:
             if password != trainer.password:
                 print(f"Incorrect Password\n")
@@ -170,7 +169,7 @@ class Trainer:
                 print(f"Logged In Successfully\n")
                 break
         
-
+        Battle.reset_all_hp_and_awake_state(found_trainer.pokemons)
         cls.current_user = found_trainer
         return cls.current_user
 
@@ -347,27 +346,44 @@ class Trainer:
     def choose_starter_pokemon(self) -> None:
         starter_pokemons = ("charmander", "bulbasaur", "squirtle")
         os.system("cls")
+        choose_starter_text = pyfiglet.figlet_format("Choose Your First Pokemon!", font="ogre")
+        print(choose_starter_text)
+
+        print(f"Hi there, {self.username.capitalize()}! Welcome to PokeRPG. Here, you will choose your first pokemon!\n")
         print("Starter Pokemons:")
         print("  1. Charmander | Fire Type Pokemon")
         print("  2. Bulbasaur | Grass Type Pokemon")
         print("  3. Squirtle | Water Type Pokemon\n")
         while True:
-            choice = input("Choose your first Pokemon: ").lower().strip()
-            if choice in starter_pokemons:
+            try:
+                choice = int(input("Choose your first Pokemon (1-3): "))
+            except ValueError:
+                print("Invalid input. Please enter a valid integer (1-3), each corresponds to the pokemon in the list.\n")
+                continue
+            if 1 <= choice <= len(starter_pokemons):
                 break
-            print("Please choose from the three pokemons.\n")
+            else:
+                print("Invalid Input. Out of Range. Please enter the pokemon number (1-3) of the pokemon you want to choose.\n")
 
-        pokemon: Pokemon = Pokemon.create_pokemon_from_name(choice)
+        pokemon_name = starter_pokemons[choice-1]
+        pokemon: Pokemon = Pokemon.create_pokemon_from_name(pokemon_name)
         pokemon.level = 2
         pokemon.hp.update_base_hp(pokemon.level, pokemon.get_evolution_chain_position())
         pokemon.base_dmg.update_base_dmg(pokemon.level, pokemon.get_evolution_chain_position())
         pokemon.hp.current = round(0.3 * pokemon.hp.base)
-        self.catch_and_train_pokemon(pokemon)
-        print("Good luck on your journey as a Pokemon Trainer!")
+        result = self.catch_and_train_pokemon(pokemon)
+        Battle.reset_hp_and_awake_state(pokemon)
+        if result:
+            os.system("cls")
+            good_luck_text = pyfiglet.figlet_format("Good luck on your journey as a Pokemon Trainer!", font="small")
+            print(f"You have successfully chosen {pokemon_name.capitalize()} as your first Pokemon!")
+            print(good_luck_text)
+        else:
+            print("Choose Starter Pokemon Error. Catching Starter Pokemon Failed.\n")
+        
         input("Press Enter to continue...")
 
     def explore_maps(self) -> None:
-        """TO DO"""
         explore_text = pyfiglet.figlet_format("Catch a Wild Pokemon", "ogre")
         def choose_map() -> int:
             while True:  
@@ -457,6 +473,70 @@ class Trainer:
         Battle.trainer_to_trainer_battle(self, gym_trainer)
         return
 
+    def your_pokemons(self) -> None:
+        os.system("cls")
+        your_pokemons_text = pyfiglet.figlet_format("Your Pokemons", font="ogre")
+        evolve_train_text = pyfiglet.figlet_format("Evolve or Train Your Pokemon", font="ogre")
+
+        print(your_pokemons_text)
+
+        if not self.pokemons:
+            print("You do not have any pokemons. Choose 'Catch a Wild Pokemon' in the menu to catch pokemons!")
+            return
+
+        for i, pokemon_id in enumerate(self.pokemons):
+            pokemon = TrainedPokemon.get_pokemon_by_id(pokemon_id)
+            print(f"  {i+1}. {pokemon.name} | Level: {pokemon.level} | Type: {pokemon.types}")
+
+        print("")
+        while True:
+                choice = input("Do you want to evolve or train your pokemons? (y/n): ").lower()
+                if choice in ("y", "yes"):
+                    break
+                elif choice in ("n", "no"):
+                    return
+                else:
+                    print("Invalid Input: Enter 'yes', 'no', 'y', or 'n' only.\n")
+                    continue
+
+        while True:
+            try:
+                choice = int(input("Choose a Pokemon Number: "))
+            except ValueError:
+                print("Invalid Input. Input a valid integer.\n")
+                continue
+            if 1 <= choice <= len(self.pokemons):
+                break
+            else:
+                print(f"Invalid Input. Available Pokemon Numbers: 1 to {len(self.pokemons)}\n")
+        
+        os.system("cls")
+        chosen_pokemon_id = self.pokemons[choice-1]
+        pokemon: TrainedPokemon = TrainedPokemon.get_pokemon_by_id(chosen_pokemon_id)
+
+        print(evolve_train_text)
+        print(pokemon)
+
+        while True:
+            choice = input("Evolve or Train? (evolve/train): ").lower()
+            if choice in ["evolve", "train"]:
+                break
+            else:
+                print(f"Invalid Input. Please enter 'evolve' or 'train' only.\n")
+        
+        print("")
+        
+        match choice:
+            case "evolve":
+                pokemon.evolve()
+            case "train":
+                pokemon.train()
+            case _:
+                pass
+
+        return
+
+
 
     def __str__(self) -> str:
         return f"Trainer {self.username} ID: {self._id}"
@@ -541,7 +621,8 @@ class Pokemon:
         """Creates a Pokemon Object from a string (pokemon_name) using PokeAPI"""
         """Always check if returned value is valid"""
 
-        print("Loading Pokemon... ")
+        loading_text = pyfiglet.figlet_format("Loading Pokemon...", font="small")
+        print(loading_text)
 
         url = f"{cls.base_url}/pokemon/{pokemon_name.lower()}"
         response = requests.get(url)
@@ -732,7 +813,7 @@ class Pokemon:
         for i, evolution in enumerate(self.evolutions):
             if evolution == self.name:
                 return i
-        
+    
 
     def __str__(self) -> str:
         return (
@@ -866,7 +947,8 @@ class TrainedPokemon(Pokemon):
         chain_position = self.get_evolution_chain_position()
 
         if chain_position == len(self.evolutions) - 1: # if last evolution
-            print("Cannot evolve further")
+            cannot_evolve_text = pyfiglet.figlet_format("Cannot evolve further", font="small")
+            print(cannot_evolve_text)
             return False
         
         next_chain_position = chain_position + 1
@@ -875,7 +957,11 @@ class TrainedPokemon(Pokemon):
         required_level = 1 + (3 * next_chain_position)
         print(f"Required Level: {required_level}")
 
+        input("\nPress Enter to continue...\n")
+
         if self.level < required_level:
+            too_low_text = pyfiglet.figlet_format("Level Too Low", font="small")
+            print(too_low_text)
             print("Current level too low. Train Pokemon first. It must be at least the required level.\n")
             return False
         
@@ -895,7 +981,10 @@ class TrainedPokemon(Pokemon):
         self.hp.update_base_hp(self.level, next_chain_position)
         self.base_dmg.update_base_dmg(self.level, next_chain_position)
 
-        print(f"{prev_name} evolved to {self.name.capitalize()}.")
+        os.system("cls")
+        evolve_text = pyfiglet.figlet_format(f"{prev_name} evolved to {self.name.capitalize()}.", font="small")
+        print(evolve_text)
+        print("Rewards for Evolution:")
         print(f"HP: {prev_hp} -> {self.hp.base} | Base Damage: {prev_base_dmg} -> {self.base_dmg.dmg}\n")
 
         return True
@@ -906,7 +995,7 @@ class TrainedPokemon(Pokemon):
         poketype = random.choice(Pokemon.poketypes)
         random_pokemon = Pokemon.generate_random_wild_pokemon(poketype)
         
-        close_gap_level = self.level + random.randint(-2, 2)
+        close_gap_level = self.level + random.randint(-2, 1)
         random_pokemon.level = min(max(close_gap_level, 1), 10)
 
         random_pokemon.hp.update_base_hp(random_pokemon.level, random_pokemon.get_evolution_chain_position())
@@ -914,14 +1003,16 @@ class TrainedPokemon(Pokemon):
 
         Battle.reset_hp_and_awake_state(self)
         Battle.reset_hp_and_awake_state(random_pokemon)
-        total_victory = Battle.initiate_pokemon_battle(self, random_pokemon)
+        total_victory = Battle.initiate_pokemon_battle(self, random_pokemon, is_wild_battle=True, is_training_battle=True)
 
         if total_victory:
             level_gap = random_pokemon.level - self.level
             self.level_up(level_gap)
             
         else:
-            print(f"{self.name.capitalize()} lost. Try again!")
+            os.system("cls")
+            loss_text = pyfiglet.figlet_format(f"{self.name.capitalize()} lost. Try again!", font="small")
+            print(loss_text)
 
 
     def level_up(self, level_gap=0):
@@ -941,7 +1032,10 @@ class TrainedPokemon(Pokemon):
         
         self.hp.update_base_hp(self.level, self.get_evolution_chain_position())
         self.base_dmg.update_base_dmg(self.level, self.get_evolution_chain_position())
-        print(f"Leveled up! {self.name.capitalize()} reached level {self.level}.")
+        level_up_text = pyfiglet.figlet_format("Leveled up!", font="small")
+        print(level_up_text)
+        print(f"{self.name.capitalize()} reached level {self.level}.")
+        print("Rewards for Leveling Up:")
         print(f"HP: {prev_hp} -> {self.hp.base} | Base Damage: {prev_base_dmg} -> {self.base_dmg.dmg}\n")
 
 
@@ -1007,7 +1101,7 @@ class Battle:
 
 
     @classmethod
-    def initiate_pokemon_battle(cls, user_pokemon: Pokemon, enemy_pokemon: Pokemon, is_wild_battle=False) -> bool | str:
+    def initiate_pokemon_battle(cls, user_pokemon: Pokemon, enemy_pokemon: Pokemon, is_wild_battle=False, is_training_battle=False) -> bool | str:
         """Returns True if user_pokemon won; returns False if lost; returns a string 'catch_success' if caught"""
         
         def choose_user_move(pokemon_moves: list[Pokemon.Move]) -> Pokemon.Move | str:
@@ -1021,7 +1115,8 @@ class Battle:
         def inflict_damage(attacker: Pokemon, move: Pokemon.Move, opponent: Pokemon) -> None:
             """Reduces the opponent_pokemon.hp.current based on the move.type, move.power, opponent_pokemon.types, and opponent_pokemon.weaknesses. Damage is rounded"""
 
-            damage = (attacker.base_dmg.dmg / 100) * move.power
+            damage_computation = ((attacker.base_dmg.dmg / 100) * move.power) + random.randint(attacker.level * -3, attacker.level * 3)
+            damage = max(damage_computation, 0) # ensure no negative damage
 
             effect = "normal"
             effect_message = {
@@ -1074,7 +1169,8 @@ class Battle:
         if is_wild_battle:
             trainer = None
             enemy_label = pyfiglet.figlet_format("WILD POKEMON", font="small")
-        if not is_wild_battle:
+
+        else: # if trainer to trainer battle
             trainer_id = enemy_pokemon.trainer_id
             trainer = Trainer.search_trainers_by_id(trainer_id)
             enemy_label = pyfiglet.figlet_format(trainer.username.upper(), font="small")
@@ -1087,7 +1183,7 @@ class Battle:
             print(pyfiglet.figlet_format("YOUR POKEMON", font="small"))
             print(user_pokemon)
             
-            if is_wild_battle:
+            if is_wild_battle and not is_training_battle:
                 catch = prompt_catch()
                 if catch:
                     catch_result = Trainer.current_user.catch_and_train_pokemon(enemy_pokemon)
@@ -1108,16 +1204,20 @@ class Battle:
             time.sleep(1.5)
             inflict_damage(user_pokemon, user_move, enemy_pokemon)
             inflict_damage(enemy_pokemon, enemy_move, user_pokemon)
-            input("\n\nPress Enter to continue...")
+            input("\nPress Enter to continue...")
 
+        os.system("cls")
         total_victory = True
+        
         if not user_pokemon.is_awake:
-            print(f"\n{user_pokemon.name.capitalize()} fainted.")
+            fainted_text = pyfiglet.figlet_format(f"\n{user_pokemon.name.capitalize()} fainted.", font="small")
+            print(fainted_text)
             total_victory = False
         if not enemy_pokemon.is_awake:
-            print(f"\n{enemy_pokemon.name.capitalize()} fainted.")
+            fainted_text = pyfiglet.figlet_format(f"\n{enemy_pokemon.name.capitalize()} fainted.", font="small")
+            print(fainted_text)
 
-        input("\n\nPress Enter to continue...")
+        input("\nPress Enter to continue...")
         
         return total_victory
             
@@ -1149,12 +1249,12 @@ class Battle:
             try:
                 choice = int(input("Choose Pokemon Number: "))
             except ValueError:
-                print("Invalid Input. Input a valid integer.")
+                print("Invalid Input. Input a valid integer.\n")
                 continue
             if 1 <= choice <= len(trainer.pokemons):
                 break
             else:
-                print(f"Invalid Input. Available Pokemon Numbers: 1 to {len(trainer.pokemons)}")
+                print(f"Invalid Input. Available Pokemon Numbers: 1 to {len(trainer.pokemons)}\n")
 
         chosen_pokemon_id = trainer.pokemons[choice-1]
         return TrainedPokemon.get_pokemon_by_id(chosen_pokemon_id)
