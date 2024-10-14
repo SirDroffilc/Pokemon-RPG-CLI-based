@@ -1,6 +1,7 @@
 # PokeRPG (CLI)
 
-#### Video Demo
+#### Video Demo:
+https://www.youtube.com/watch?v=PevjBLGPOiY&t=4s
 
 #### Description:
 
