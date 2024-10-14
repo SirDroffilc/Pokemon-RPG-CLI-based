@@ -4,7 +4,7 @@
 
 #### Description:
 
-**PokeRPG** is a command-line interface-based Pokemon RPG that utilizes PokeAPI. It is a simple game where users can be Pokemon Trainers, where they can catch pokemons, battle with other pokemons, level-up their pokemons, evolve and train their pokemons, and battle with Gym Leaders.
+**PokeRPG** is a command-line based Pokémon RPG that integrates with the PokeAPI. In this game, players take on the role of Pokémon Trainers, allowing them to catch Pokémon, engage in battles, level up their Pokémon, evolve and train them, and challenge Gym Leaders.
 
 ## Key Features
 
@@ -58,6 +58,7 @@
 - class 'Trainer' contains all code related to the users/trainers
 - class 'Pokemon' contains all code related to pokemons
 - class 'TrainedPokemon' inherits from class 'Pokemon' and extends attributes, class methods, and instances for Pokemons that are owned and trained by Trainer objects
+- class 'Battle' contains all code related to pokemon battles, whether trainer-to-wild pokemon battles or trainer-to-trainer battles
 
 ### 9. Pretty-Print
 

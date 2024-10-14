@@ -7,11 +7,8 @@ import requests
 from sortedcontainers import SortedSet
 import time
 
-
 def main() -> None:
-
     return None
-
 
 class Trainer:
     """Global Variables"""
