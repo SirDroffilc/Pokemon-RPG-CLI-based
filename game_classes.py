@@ -11,7 +11,7 @@ def main() -> None:
     return None
 
 class Trainer:
-    """Global Variables"""
+    """Class Variables"""
     trainers: SortedSet["Trainer"] = SortedSet(key=lambda trainer: trainer.username)
     current_user: "Trainer" = None
     USERNAME_LIMIT = 15
@@ -868,7 +868,7 @@ class Pokemon:
     
 class TrainedPokemon(Pokemon):
     
-    """Global Variables"""
+    """Class Variables"""
     trained_pokemons: dict[int, "TrainedPokemon"] = {}
     unique_id_counter = 0
 

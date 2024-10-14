@@ -3,6 +3,7 @@ plan.txt
 tryAPI.py
 try_files.py
 try.ipynb
+test_project.py
 
 # Ignore venv folder
 venv/
